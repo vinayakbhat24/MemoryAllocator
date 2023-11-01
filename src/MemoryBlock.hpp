@@ -4,14 +4,14 @@
 class MemoryBlock
 {
 public:
-    std::size_t getSize() const
+    std::size_t size() const
     {
         return size_;
     }
 
-    std::size_t getUsed() const
+    bool free() const
     {
-        return used_;
+        return not inUse_;
     }
 
     static void *allocate(const std::size_t size)
@@ -24,28 +24,32 @@ public:
         }
 
         mb->size_ = alignedSize;
-        mb->used_ = true;
+        mb->inUse_ = true;
+
+        /*Update linked list*/
         if (not heapStart)
         {
             heapStart = mb;
         }
-
-        if (not heapEnd)
-        {
-            heapEnd = mb;
-        }
-        else
+        if (heapEnd)
         {
             heapEnd->next_ = mb;
         }
+        heapEnd = mb;
 
         return static_cast<void *>(reinterpret_cast<char *>(&(mb->next_)) + sizeof(void *));
     }
 
-    static const MemoryBlock *getBlock(const void *dataFiled)
+    static void free(void *dataField)
+    {
+        auto *memoryBlock = getBlock(dataField);
+        memoryBlock->inUse_ = false;
+    }
+
+    static MemoryBlock *getBlock(void *dataFiled)
     {
 
-        return reinterpret_cast<const MemoryBlock *>((static_cast<const char *>(dataFiled) - sizeof(MemoryBlock)));
+        return reinterpret_cast<MemoryBlock *>((static_cast<char *>(dataFiled) - sizeof(MemoryBlock)));
     }
 
 private:
@@ -67,7 +71,7 @@ private:
     }
 
     std::size_t size_;
-    bool used_;
+    bool inUse_;
     MemoryBlock *next_;
 
     static inline MemoryBlock *heapStart = nullptr;
